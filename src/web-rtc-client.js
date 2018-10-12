@@ -1,24 +1,26 @@
 // @flow
 /* eslint-disable class-methods-use-this */
+/* global window */
 import SIP from 'sip.js';
 
 import CallbacksHandler from './utils/CallbacksHandler';
 
 const states = ['STATUS_NULL', 'STATUS_NEW', 'STATUS_CONNECTING', 'STATUS_CONNECTED', 'STATUS_COMPLETED'];
-const events = ['connected', 'disconnected', 'registered', 'unregistered', 'registrationFailed', 'invite', 'message'];
+const events = ['connected', 'disconnected', 'registered', 'unregistered', 'registrationFailed', 'invite', 'inviteSent', 'transportCreated', 'newTransaction', 'transactionDestroyed', 'notify', 'outOfDialogReferRequested', 'message'];
+
+type MediaConfig = {
+  audio: Object & boolean,
+  video: Object & boolean,
+  localVideo?: Object & boolean
+};
 
 type WebRtcConfig = {
   displayName: string,
   host: string,
   port?: number,
   authorizationUser: string,
-  password: string
-};
-
-type MediaConfig = {
-  audio: Object & boolean,
-  video: Object & boolean,
-  localVideo?: Object & boolean
+  password: string,
+  media: MediaConfig
 };
 
 // @see https://github.com/onsip/SIP.js/blob/master/src/Web/Simple.js
@@ -52,11 +54,11 @@ export default class WebRTCClient {
     return [];
   }
 
-  constructor(config: WebRtcConfig, media: MediaConfig) {
+  constructor(config: WebRtcConfig) {
     this.config = config;
     this.callbacksHandler = new CallbacksHandler();
 
-    this.configureMedia(media);
+    this.configureMedia(config.media);
     this.userAgent = this.createUserAgent();
   }
 
@@ -273,7 +275,7 @@ export default class WebRTCClient {
     let remoteStream;
 
     if (pc.getReceivers) {
-      remoteStream = new global.window.MediaStream();
+      remoteStream = global ? new global.window.MediaStream() : window.MediaStream();
       pc.getReceivers().forEach(receiver => {
         const { track } = receiver;
         if (track) {
@@ -299,7 +301,7 @@ export default class WebRTCClient {
       let localStream;
 
       if (pc.getSenders) {
-        localStream = new global.window.MediaStream();
+        localStream = global ? new global.window.MediaStream() : window.MediaStream();
         pc.getSenders().forEach(sender => {
           const { track } = sender;
           if (track && track.kind === 'video') {
